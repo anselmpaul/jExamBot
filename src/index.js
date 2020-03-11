@@ -2,20 +2,23 @@ const CronJob = require('cron');
 const Parser = require('rss-parser');
 const moment = require('moment');
 const parser = new Parser();
+const Telegraf = require('telegraf');
 
 const log = message => {
     const now = moment().format('YY-MM-D HH:m');
     console.log(now + ': ' + message);
 };
 
-const job = new CronJob.CronJob('* * * * *', function() {
-    getExams();
-});
-
+const subs = [];
 let latestExams = [];
 let latestPostContent = '';
 
-job.start();
+const bot = new Telegraf(process.env.BOT_TOKEN);
+bot.start((ctx) => {
+    subs.push(ctx.chat.id);
+    ctx.reply('Hey! I\'m gonna keep you updated on the latest released grades on jExam!')
+});
+bot.launch();
 
 const getExams = async () => {
     let feed = await parser.parseURL('https://feeds.feedburner.com/jExam?');
@@ -40,8 +43,21 @@ const getExams = async () => {
     const newEntries = entries.filter(e => !latestExams.includes(e));
     log('new results');
     log(newEntries);
+    const examsString = newEntries.join(' <br />');
+    const message = '🚨 New Exam Results Released! 🚨 <br />' + examsString +  '<a hre="https://jexam.inf.tu-dresden.de/">Open jExam</a>';
+
+    subs.map(subscriber => {
+        bot.telegram.sendMessage(subscriber, message, {parse_mode: 'HTML'});
+    });
 
     // reset values for next run
     latestExams = entries;
     latestPostContent = first.content;
 };
+
+// every hour between 8am and 8pm on mo-fri
+const job = new CronJob.CronJob('0 8-20 * * 1-5', function() {
+    getExams();
+});
+
+job.start();
