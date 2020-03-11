@@ -11,6 +11,7 @@
   "private": false,
   "dependencies": {
     "cron": "^1.8.2",
+    "fs": "^0.0.1-security",
     "moment": "^2.24.0",
     "rss-parser": "^3.7.5",
     "telegraf": "^3.36.0"

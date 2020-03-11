@@ -3,21 +3,30 @@ const Parser = require('rss-parser');
 const moment = require('moment');
 const parser = new Parser();
 const Telegraf = require('telegraf');
+const fs = require('fs');
 
 const log = message => {
     const now = moment().format('YY-MM-D HH:m');
     console.log(now + ': ' + message);
 };
 
-const subs = [];
+let rawdata = fs.readFileSync('subs.json');
+let json = JSON.parse(rawdata);
+subs = json.subs;
 let latestExams = [];
 let latestPostContent = '';
 
 const bot = new Telegraf(process.env.BOT_TOKEN);
 bot.start((ctx) => {
-    subs.push(ctx.chat.id);
+    if (!subs.includes(ctx.chat.id)) {
+        subs.push(ctx.chat.id);
+        json =  JSON.stringify({"subs": subs});
+        fs.writeFileSync('subs.json', json);
+    }
     ctx.reply('Hey! I\'m gonna keep you updated on the latest released grades on jExam!')
 });
+bot.command('ping', ctx => ctx.reply('pong'));
+bot.command('subs', ctx => ctx.reply(subs.join(' ,') || 'No subs.'));
 bot.launch();
 
 const getExams = async () => {
@@ -56,7 +65,7 @@ const getExams = async () => {
 };
 
 // every hour between 8am and 8pm on mo-fri
-const job = new CronJob.CronJob('0 8-20 * * 1-5', function() {
+const job = new CronJob.CronJob('*/10 8-20 * * 1-5', function() {
     getExams();
 });
 
